@@ -10,7 +10,9 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import java.io.IOException;
 import java.time.Instant;
-import java.util.*;
+import java.util.Collections;
+import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -27,10 +29,10 @@ public class WebSocketTextCalculatorMessageHandler extends TextWebSocketHandler 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
         Payload payload = Payload.builder()
-                .name(""+ session.getId())
+                .name("" + session.getId())
                 .type("id")
                 .date(Instant.now().getEpochSecond())
-                .id(sessions.size()+1).build();
+                .id(sessions.size() + 1).build();
         String msg = objectMapper.writeValueAsString(payload);
         TextMessage newMessage = new TextMessage(msg);
         session.sendMessage(newMessage);
@@ -39,23 +41,23 @@ public class WebSocketTextCalculatorMessageHandler extends TextWebSocketHandler 
 
         msg = objectMapper.writeValueAsString(payload);
         TextMessage messageOtherSessions = new TextMessage(msg);
-        sessions.forEach(s->{
-                    try{
-                        s.session.sendMessage(messageOtherSessions);
-                    } catch (Exception e) {
+        sessions.forEach(s -> {
+            try {
+                s.session.sendMessage(messageOtherSessions);
+            } catch (Exception e) {
 
-                    }
-                });
+            }
+        });
         sessions.add(new InternalWebSocketSession(session));
 
     }
 
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
-       Payload content = objectMapper.readValue(message.getPayload(), Payload.class);
-        if(isValid(content)) {
+        Payload content = objectMapper.readValue(message.getPayload(), Payload.class);
+        if (isValid(content)) {
             sessions.stream()
-                    .forEach(saved-> {
+                    .forEach(saved -> {
                         try {
                             Payload newPayload = calculator(content);
                             String msg = objectMapper.writeValueAsString(newPayload);
@@ -72,31 +74,31 @@ public class WebSocketTextCalculatorMessageHandler extends TextWebSocketHandler 
         return content != null && content.getText() != null && content.getText().matches("[\\d\\sxX+\\-/*]+");
     }
 
-
+    //This calculates everything
     private Payload calculator(Payload content) {
-        Matcher matcher = EXPRESSION.matcher(content.getText().replaceAll("\\s+",""));
+        Matcher matcher = EXPRESSION.matcher(content.getText().replaceAll("\\s+", ""));
         Integer total = null;
-        if(matcher.find()) {
+        if (matcher.find()) {
             StringBuilder builder = new StringBuilder(content.getText());
             total = Integer.valueOf(matcher.group(1));
 
-            for(int i = 3; i <= matcher.groupCount(); i+=2) {
-                String symbol = matcher.group(i-1);
+            for (int i = 3; i <= matcher.groupCount(); i += 2) {
+                String symbol = matcher.group(i - 1);
                 Integer number = Integer.valueOf(matcher.group(i));
-                switch(symbol) {
+                switch (symbol) {
                     case "/":
-                        total/=number;
+                        total /= number;
                         break;
                     case "-":
-                        total-=number;
+                        total -= number;
                         break;
                     case "+":
-                        total+=number;
+                        total += number;
                         break;
                     case "X":
                     case "x":
                     case "*":
-                        total*=number;
+                        total *= number;
                         break;
                     default:
                         //Error;
